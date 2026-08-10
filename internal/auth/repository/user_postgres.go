@@ -3,10 +3,13 @@ package repository
 import (
 	"context"
 	"errors"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/undndnwnkk/go-warehouse-system/internal/auth/model"
 )
+
+var ErrNotFound = errors.New("not found")
 
 type PostgresUserRepository struct {
 	db *pgxpool.Pool
@@ -39,9 +42,9 @@ func (r *PostgresUserRepository) GetUserByEmail(ctx context.Context, email strin
 
 func (r *PostgresUserRepository) SaveUser(ctx context.Context, u model.User) (string, error) {
 	query := `
-		INSERT INTO users VALUES (
-			$1, $2
-		) RETURNING id
+		INSERT INTO users (email, password_hash) 
+		VALUES ($1, $2) 
+		RETURNING id
 	`
 	var id string
 
@@ -52,7 +55,3 @@ func (r *PostgresUserRepository) SaveUser(ctx context.Context, u model.User) (st
 
 	return id, nil
 }
-
-var (
-	ErrNotFound = errors.New("not found")
-)

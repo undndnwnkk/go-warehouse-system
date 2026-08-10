@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"github.com/undndnwnkk/go-warehouse-system/internal/auth/model"
 	"github.com/undndnwnkk/go-warehouse-system/internal/auth/repository"
@@ -47,20 +48,20 @@ func (s *AuthService) Register(ctx context.Context, req model.CreateUserRequest)
 	}
 
 	u, err := s.userRepository.GetUserByEmail(ctx, req.Email)
-	if err != nil {
-		return nil, err
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
+		return nil, fmt.Errorf("failed to query user: %w", err)
 	}
 
 	if u != nil {
-		return nil, fmt.Errorf("incorrect email or password")
+		return nil, fmt.Errorf("user with this email already exists")
 	}
 
-	password_hash, err := HashPassword(req.Password)
+	passwordHash, err := HashPassword(req.Password)
 	if err != nil {
 		return nil, fmt.Errorf("error while hashing: %w", err)
 	}
 
-	currentUser := model.User{Email: req.Email, PasswordHash: password_hash}
+	currentUser := model.User{Email: req.Email, PasswordHash: passwordHash}
 
 	id, err := s.userRepository.SaveUser(ctx, currentUser)
 	if err != nil {
@@ -73,6 +74,9 @@ func (s *AuthService) Register(ctx context.Context, req model.CreateUserRequest)
 func (s *AuthService) Login(ctx context.Context, req model.CreateUserRequest) (*model.TokenPair, error) {
 	u, err := s.userRepository.GetUserByEmail(ctx, req.Email)
 	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, fmt.Errorf("invalid email or password")
+		}
 		return nil, err
 	}
 
