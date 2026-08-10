@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS stock (
+    sku VARCHAR(255) PRIMARY KEY,
+    quantity BIGINT NOT NULL CHECK (quantity >= 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
