@@ -15,7 +15,7 @@ message ReserveStockRequest {
 
 message OrderItem {
     string sku = 1;
-    uint32 quantity = 2;
+    int64 quantity = 2;
 }
 
 message ReserveStockResponse {

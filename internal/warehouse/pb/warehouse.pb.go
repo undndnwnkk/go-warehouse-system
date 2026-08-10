@@ -76,7 +76,7 @@ func (x *ReserveStockRequest) GetItems() []*OrderItem {
 type OrderItem struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Sku           string                 `protobuf:"bytes,1,opt,name=sku,proto3" json:"sku,omitempty"`
-	Quantity      uint32                 `protobuf:"varint,2,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	Quantity      int64                  `protobuf:"varint,2,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -118,7 +118,7 @@ func (x *OrderItem) GetSku() string {
 	return ""
 }
 
-func (x *OrderItem) GetQuantity() uint32 {
+func (x *OrderItem) GetQuantity() int64 {
 	if x != nil {
 		return x.Quantity
 	}
@@ -187,7 +187,7 @@ const file_warehouse_proto_rawDesc = "" +
 	"\x05items\x18\x02 \x03(\v2\x14.warehouse.OrderItemR\x05items\"9\n" +
 	"\tOrderItem\x12\x10\n" +
 	"\x03sku\x18\x01 \x01(\tR\x03sku\x12\x1a\n" +
-	"\bquantity\x18\x02 \x01(\rR\bquantity\"J\n" +
+	"\bquantity\x18\x02 \x01(\x03R\bquantity\"J\n" +
 	"\x14ReserveStockResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage2\\\n" +

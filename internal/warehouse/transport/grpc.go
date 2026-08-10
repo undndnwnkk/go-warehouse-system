@@ -1,20 +1,37 @@
 package transport
 
-type OrderItem struct {
-	OrderId  string
-	Quantity int64
+import (
+	"context"
+	pb "github.com/undndnwnkk/go-warehouse-system/internal/warehouse/pb"
+	"github.com/undndnwnkk/go-warehouse-system/internal/warehouse/service"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+type WarehouseGrpcServer struct {
+	pb.UnimplementedWarehouseServer
+	service service.WarehouseService
 }
 
-type ReserveStockRequest struct {
-	OrderId  string
-	Repeated OrderItem
-}
+func (s *WarehouseGrpcServer) ReserveStock(ctx context.Context, req pb.ReserveStockRequest) (*pb.ReserveStockResponse, error) {
+	orderID := req.GetOrderId()
+	if orderID == "" {
+		return nil, status.Error(codes.InvalidArgument, "OrderID must be not null")
+	}
 
-type ReserveStockResponse struct {
-	Success bool
-	Message string
-}
+	if err := ctx.Err(); err != nil {
+		return nil, status.Error(codes.Canceled, "client cancel request")
+	}
 
-type WarehouseServer interface {
-	ReserveStock(request ReserveStockRequest) ReserveStockResponse
+	for _, item := range req.Items {
+		err := s.service.Reserve(ctx, item.Sku, item.Quantity)
+		if err != nil {
+			return nil, status.Error(codes.FailedPrecondition, "error while reserving")
+		}
+	}
+
+	return &pb.ReserveStockResponse{
+		Success: true,
+		Message: "all reservings was successfull",
+	}, nil
 }

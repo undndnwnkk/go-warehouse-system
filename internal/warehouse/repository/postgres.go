@@ -15,6 +15,11 @@ type Stock struct {
 	UpdatedAt time.Time `db:"updated_at"`
 }
 
+type OrderItem struct {
+	SKU      string `db:"sku"`
+	Quantity int64  `db:"quantity"`
+}
+
 type PostgresWarehouseRepository struct {
 	db *pgxpool.Pool
 }

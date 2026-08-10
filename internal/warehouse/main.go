@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/joho/godotenv"
@@ -49,26 +50,25 @@ func main() {
 		Addr: ":8081",
 	}
 
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
 	go func() {
-		if err := server.ListenAndServe(); err != nil {
-			logger.Error("error starting server", "error", err)
+		logger.Info("HTTP-server started on", "port", ":8080")
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Error("Server error", "error", err)
 		}
 	}()
-	logger.Info("Server started")
 
-	quit := make(chan os.Signal, 1)
+	<-quit
+	logger.Info("Ending work...")
 
-	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
-
-	sig := <-quit
-	slog.Info("Server shutdown initiated...", "signal", sig.String())
-
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer shutdownCancel()
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		slog.Error("Server forced to shutdown", "error", err)
+		logger.Error("Error while stopping", "error", err)
 	}
 
-	slog.Info("Server successfully stopped")
+	logger.Info("Server stopped")
 }
