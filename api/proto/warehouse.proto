@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package warehouse;
+
+option go_package = "github.com/undndnwnkk/go-warehouse-system/internal/warehouse/pb;warehousepb";
+
+service Warehouse {
+    rpc ReserveStock (ReserveStockRequest) returns (ReserveStockResponse);
+}
+
+message ReserveStockRequest {
+    string order_id = 1;
+    repeated OrderItem items = 2;
+}
+
+message OrderItem {
+    string sku = 1;
+    uint32 quantity = 2;
+}
+
+message ReserveStockResponse {
+    bool success = 1;
+    string message = 2;
+}
