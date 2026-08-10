@@ -48,10 +48,9 @@ func (r *PostgresWarehouseRepository) GetStock(ctx context.Context, sku string) 
 
 	return &stock, nil
 }
-
 func (r *PostgresWarehouseRepository) UpdateStock(ctx context.Context, sku string, quantity int64) error {
 	query := `
-		UPDATE stock WHERE sku = $1 SET quantity = $2
+		UPDATE stock SET quantity = $2 WHERE sku = $1
 	`
 
 	cmd, err := r.db.Exec(ctx, query, sku, quantity)

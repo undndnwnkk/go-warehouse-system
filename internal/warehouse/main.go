@@ -3,24 +3,28 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/jackc/pgx/v5/pgxpool"
-	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/joho/godotenv"
-	// "github.com/undndnwnkk/go-warehouse-system/internal/warehouse/repository"
-	// "github.com/undndnwnkk/go-warehouse-system/internal/warehouse/service"
 	"log/slog"
-	"net/http"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
+	"google.golang.org/grpc"
+
+	pb "github.com/undndnwnkk/go-warehouse-system/internal/warehouse/pb"
+	"github.com/undndnwnkk/go-warehouse-system/internal/warehouse/repository"
+	"github.com/undndnwnkk/go-warehouse-system/internal/warehouse/service"
+	"github.com/undndnwnkk/go-warehouse-system/internal/warehouse/transport"
 )
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
 
 	if err := godotenv.Load(); err != nil {
-		logger.Error(".env not found")
+		slog.Warn(".env file not found")
 	}
 
 	cfg := Config{
@@ -30,45 +34,45 @@ func main() {
 		DBURL:      getEnv("DATABASE_URL", "postgres://user:password@localhost:5433/warehouse_db?sslmode=disable"),
 	}
 
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	pool, err := pgxpool.New(ctx, cfg.DBURL)
 	if err != nil {
-		logger.Error("pgxpool.New: ", "error", err)
+		slog.Error("failed to create pgxpool", "error", err)
+		os.Exit(1)
 	}
 	defer pool.Close()
 
 	if err := pool.Ping(ctx); err != nil {
-		logger.Error("No connection with PostgreSQL: %v", "error", err)
+		slog.Error("no connection with PostgreSQL", "error", err)
+		os.Exit(1)
 	}
-	logger.Info("Connection pool pgx was created")
+	slog.Info("Connection pool pgx created")
 
-	// warehouseRepository := repository.NewPostgresWarehouseRepository(pool)
-	// warehouseService := service.NewWarehouseService(warehouseRepository)
+	warehouseRepo := repository.NewPostgresWarehouseRepository(pool)
+	warehouseSvc := service.NewWarehouseService(warehouseRepo)
+	grpcServerImpl := transport.NewWarehouseGrpcServer(warehouseSvc)
 
-	server := &http.Server{
-		Addr: ":8081",
+	lis, err := net.Listen("tcp", ":50051")
+	if err != nil {
+		slog.Error("failed to listen", "error", err)
+		os.Exit(1)
 	}
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	grpcServer := grpc.NewServer()
+	pb.RegisterWarehouseServer(grpcServer, grpcServerImpl)
 
 	go func() {
-		logger.Info("HTTP-server started on", "port", ":8080")
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Error("Server error", "error", err)
+		slog.Info("gRPC server started", "addr", lis.Addr().String())
+		if err := grpcServer.Serve(lis); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+			slog.Error("gRPC server error", "error", err)
 		}
 	}()
 
-	<-quit
-	logger.Info("Ending work...")
+	<-ctx.Done()
+	slog.Info("Shutting down gRPC server...")
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	if err := server.Shutdown(shutdownCtx); err != nil {
-		logger.Error("Error while stopping", "error", err)
-	}
-
-	logger.Info("Server stopped")
+	grpcServer.GracefulStop()
+	slog.Info("Server stopped successfully")
 }
