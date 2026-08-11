@@ -15,6 +15,11 @@ type CreateUserRequest struct {
 	Password string `json:"password"`
 }
 
+type RefreshTokenRequest struct {
+	UserID          string `json:"user_id"`
+	RawRefreshToken string `json:"raw_refresh_token"`
+}
+
 type RefreshToken struct {
 	ID        int64     `db:"id"`
 	UserID    string    `db:"user_id"`
