@@ -11,6 +11,6 @@ deps:
 	go mod tidy
 	go mod download
 
-.PHONY: migrate-up
+.PHONY: migrate-up	
 migrate-up:
-	migrate -path migrations/auth -database "postgres://user:password@localhost:5433/warehouse_db?sslmode=disable" -verbose up && migrate -path migrations/warehouse -database "postgres://user:password@localhost:5433/warehouse_db?sslmode=disable" -verbose up
+	migrate -path migrations/ -database "postgres://user:password@localhost:5433/warehouse_db?sslmode=disable" -verbose up
