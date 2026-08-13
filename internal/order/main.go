@@ -50,7 +50,7 @@ func main() {
 	}
 	slog.Info("Connection pool pgx created")
 
-	conn, err := grpc.Dial("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		slog.Error("failed to connect to warehouse gRPC", "error", err)
 	}
@@ -74,7 +74,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		logger.Info("HTTP-server started", "port", "8080")
+		logger.Info("HTTP-server started", "port", "8082")
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("Server error", "error", err)
 		}

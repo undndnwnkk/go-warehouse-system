@@ -42,3 +42,8 @@ func NewAuthMiddleware(jwtManager TokenValidator) func(http.Handler) http.Handle
 		})
 	}
 }
+
+func GetUserID(ctx context.Context) (string, bool) {
+	userID, ok := ctx.Value(UserIDKey).(string)
+	return userID, ok
+}

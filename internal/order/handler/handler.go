@@ -37,14 +37,14 @@ func NewRouter(orderService service.OrderService) http.Handler {
 }
 
 func (h *Handler) createOrderHandler(w http.ResponseWriter, r *http.Request) {
-	var request []model.CreateOrderItemRequest
+	var request model.CreateOrderHttpRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http_helper.WriteError(w, http.StatusBadRequest, "invalid arguments:"+err.Error())
 		return
 	}
 
-	order, err := h.orderService.CreateOrder(r.Context(), request)
+	order, err := h.orderService.CreateOrder(r.Context(), request.Items)
 	if err != nil {
 		http_helper.WriteError(w, http.StatusInternalServerError, "internal server error:"+err.Error())
 		return

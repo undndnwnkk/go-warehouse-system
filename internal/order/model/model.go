@@ -34,10 +34,14 @@ type OrderItem struct {
 type SaveOrderItemRequest struct {
 	OrderID  string
 	SKU      string
-	Quantity string
+	Quantity int64
 }
 
 type CreateOrderItemRequest struct {
-	SKU      string
-	Quantity int64
+	SKU      string `json:"sku"`
+	Quantity int64  `json:"quantity"`
+}
+
+type CreateOrderHttpRequest struct {
+	Items []CreateOrderItemRequest `json:"items"`
 }

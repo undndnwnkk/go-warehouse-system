@@ -35,10 +35,14 @@ func (r *PostgresOrderRepository) SaveOrder(ctx context.Context, request model.O
 	`
 
 	var order model.Order
-	if err := r.db.QueryRow(ctx, query, request.ID, request.UserID, request.Status).Scan(&order); err != nil {
+	if err := r.db.QueryRow(ctx, query, request.UserID, request.Status).Scan(
+		&order.ID,
+		&order.UserID,
+		&order.Status,
+		&order.CreatedAt,
+	); err != nil {
 		return nil, err
 	}
-
 	return &order, nil
 }
 
