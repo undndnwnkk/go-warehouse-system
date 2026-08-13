@@ -66,7 +66,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		logger.Info("HTTP-server started", "port", "8080")
+		logger.Info("HTTP-server started", "port", "8081")
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("Server error", "error", err)
 		}

@@ -15,12 +15,32 @@ type Stock struct {
 	UpdatedAt time.Time `db:"updated_at"`
 }
 
+type CreateStockRequest struct {
+	SKU      string `json:"sku"`
+	Quantity int64  `json:"quantity"`
+}
+
 type PostgresWarehouseRepository struct {
 	db *pgxpool.Pool
 }
 
 func NewPostgresWarehouseRepository(db *pgxpool.Pool) *PostgresWarehouseRepository {
 	return &PostgresWarehouseRepository{db: db}
+}
+
+func (r *PostgresWarehouseRepository) CreateStock(ctx context.Context, request CreateStockRequest) (*Stock, error) {
+	query := `
+		INSERT INTO stock (sku, quantity) VALUES ($1, $2) RETURNING sku, quantity, created_at, updated_at
+	`
+
+	var res Stock
+	if err := r.db.QueryRow(ctx, query, request.SKU, request.Quantity).Scan(
+		&res.SKU, &res.Quantity, &res.CreatedAt, &res.UpdatedAt,
+	); err != nil {
+		return nil, err
+	}
+
+	return &res, nil
 }
 
 func (r *PostgresWarehouseRepository) GetStock(ctx context.Context, sku string) (*Stock, error) {

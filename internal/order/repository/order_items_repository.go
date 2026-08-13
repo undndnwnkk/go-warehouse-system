@@ -22,7 +22,9 @@ func (r *PostgresOrderItemsRepository) CreateOrderItem(ctx context.Context, requ
 
 	var item model.OrderItem
 
-	if err := r.db.QueryRow(ctx, query, request.OrderID, request.SKU, request.Quantity).Scan(&item); err != nil {
+	if err := r.db.QueryRow(ctx, query, request.OrderID, request.SKU, request.Quantity).Scan(
+		&item.ID, &item.OrderID, &item.SKU, &item.Quantity,
+	); err != nil {
 		return nil, err
 	}
 

@@ -22,7 +22,9 @@ func (r *PostgresOrderRepository) CreateOrder(ctx context.Context, request model
 	`
 
 	var order model.Order
-	if err := r.db.QueryRow(ctx, query, request.UserID, request.Status).Scan(&order); err != nil {
+	if err := r.db.QueryRow(ctx, query, request.UserID, request.Status).Scan(
+		&order.ID, &order.UserID, &order.Status, &order.CreatedAt,
+	); err != nil {
 		return nil, err
 	}
 

@@ -2,13 +2,21 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
+	"github.com/segmentio/kafka-go"
 	"github.com/undndnwnkk/go-warehouse-system/internal/order/middleware"
 	"github.com/undndnwnkk/go-warehouse-system/internal/order/model"
 	"github.com/undndnwnkk/go-warehouse-system/internal/order/repository"
 	pb "github.com/undndnwnkk/go-warehouse-system/internal/warehouse/pb"
+	kafka_events "github.com/undndnwnkk/go-warehouse-system/pkg/kafka"
+)
+
+const (
+	topic        = "order_events"
+	brokerAdress = "localhost:29092"
 )
 
 type OrderService struct {
@@ -72,6 +80,33 @@ func (s *OrderService) CreateOrder(ctx context.Context, items []model.CreateOrde
 	}
 
 	// TODO: Kafka message sending
+	event := kafka_events.KafkaOrderEvent{
+		OrderID:   order.ID,
+		UserID:    order.UserID,
+		Status:    "pending",
+		Timestamp: time.Now(),
+	}
+
+	eventBytes, err := json.Marshal(event)
+	if err != nil {
+		return nil, err
+	}
+
+	writer := &kafka.Writer{
+		Addr:                   kafka.TCP(brokerAdress),
+		Topic:                  topic,
+		Balancer:               &kafka.LeastBytes{},
+		AllowAutoTopicCreation: true,
+	}
+	defer writer.Close()
+
+	err = writer.WriteMessages(ctx, kafka.Message{
+		Key:   nil,
+		Value: eventBytes,
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	return order, nil
 }

@@ -4,3 +4,6 @@ CREATE TABLE IF NOT EXISTS stock (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+INSERT INTO stock (sku, quantity) VALUES ('iphone-15', 1);
+INSERT INTO stock (sku, quantity) VALUES ('case-silicone', 2);
