@@ -1,3 +1,5 @@
+MIGRATIONS_DIR=migrations
+
 .PHONY: generate
 generate:
 	mkdir -p internal/warehouse/pb
@@ -10,6 +12,14 @@ generate:
 deps:
 	go mod tidy
 	go mod download
+
+.PHONY: migrate-create
+migrate-create:
+	@if [ -z "$(name)" ]; then \
+		exit 1; \
+	fi
+	@mkdir -p $(MIGRATIONS_DIR)
+	migrate create -ext sql -dir $(MIGRATIONS_DIR) -seq $(name)
 
 .PHONY: migrate-up	
 migrate-up:
