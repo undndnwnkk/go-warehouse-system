@@ -85,26 +85,34 @@ func (r *PostgresWarehouseRepository) Reserve(ctx context.Context, sku string, q
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 
-	stock, err := r.GetStock(ctx, sku)
-	if err != nil {
-		return ErrNotFound
-	}
-
-	if stock.Quantity < quantity {
-		return ErrNotEnough
-	}
-
-	stock.Quantity -= quantity
-
-	err = r.UpdateStock(ctx, sku, stock.Quantity)
-	if err != nil {
+	queryStock := `
+		SELECT quantity FROM stock WHERE sku = $1
+		FOR UPDATE
+	`
+	var available int64
+	if err := tx.QueryRow(ctx, queryStock, sku).Scan(&available); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
 		return err
 	}
 
-	err = tx.Commit(ctx)
-	if err != nil {
+	if available < quantity {
+		return ErrNotEnough
+	}
+
+	updateStock := `
+		UPDATE stock SET quantity = $2 WHERE sku = $1
+	`
+	if _, err := tx.Exec(ctx, updateStock, sku, available-quantity); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
 

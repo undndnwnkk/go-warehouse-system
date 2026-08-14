@@ -38,6 +38,20 @@ func NewRouter(orderService service.OrderService) http.Handler {
 	return r
 }
 
+// createOrderHandler godoc
+//
+//	@Summary		Create an order
+//	@Description	Creates an order for the authenticated user, reserves stock, and publishes an order event.
+//	@Tags			Orders
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			request	body		model.CreateOrderHttpRequest	true	"Order payload"
+//	@Success		201		{object}	model.Order
+//	@Failure		400		{object}	http_helper.ErrorResponse
+//	@Failure		401		{object}	http_helper.ErrorResponse
+//	@Failure		500		{object}	http_helper.ErrorResponse
+//	@Router			/api/v1/orders/ [post]
 func (h *Handler) createOrderHandler(w http.ResponseWriter, r *http.Request) {
 	var request model.CreateOrderHttpRequest
 

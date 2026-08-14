@@ -37,20 +37,20 @@ func main() {
 	pool, err := pgxpool.New(ctx, cfg.DBURL)
 	if err != nil {
 		log.Error("failed to create pgxpool", "error", err)
-		os.Exit(1)
+		return
 	}
 	defer pool.Close()
 
 	if err := pool.Ping(ctx); err != nil {
 		log.Error("no connection with PostgreSQL", "error", err)
-		os.Exit(1)
+		return
 	}
 	log.Info("Connection pool pgx created")
 
 	userRepository := repository.NewPostgresUserRepository(pool)
 	tokenRepository := repository.NewPostgresRefreshTokenRepository(pool)
 	jwtManager := jwt.NewManager("supersecret")
-	authService := service.NewAuthService(*userRepository, *tokenRepository, jwtManager, time.Duration(15*time.Minute), time.Duration(14*time.Hour))
+	authService := service.NewAuthService(*userRepository, *tokenRepository, jwtManager, 15*time.Minute, 14*time.Hour)
 
 	router := handler.NewRouter(*authService)
 	server := http.Server{

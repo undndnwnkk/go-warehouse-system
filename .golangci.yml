@@ -1,0 +1,25 @@
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - bodyclose
+    - gocritic
+    - misspell
+    - unconvert
+    - unparam
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-rules:
+    - path: api/openapi/main.go
+      linters:
+        - staticcheck
+      text: "SA1019"

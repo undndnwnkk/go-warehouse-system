@@ -4,30 +4,37 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/segmentio/kafka-go"
 	"github.com/undndnwnkk/go-warehouse-system/internal/order/middleware"
 	"github.com/undndnwnkk/go-warehouse-system/internal/order/model"
-	"github.com/undndnwnkk/go-warehouse-system/internal/order/repository"
 	pb "github.com/undndnwnkk/go-warehouse-system/internal/warehouse/pb"
 	kafka_events "github.com/undndnwnkk/go-warehouse-system/pkg/kafka"
 )
 
+type OrderStore interface {
+	CreateOrderWithItems(ctx context.Context, orderRequest model.CreateOrderRequest, items []model.CreateOrderItemRequest) (*model.Order, error)
+	ChangeOrderStatus(ctx context.Context, orderID string, status model.OrderStatus) error
+}
+
+type EventWriter interface {
+	WriteMessages(ctx context.Context, msgs ...kafka.Message) error
+}
+
 type OrderService struct {
-	ordersDB        repository.PostgresOrderRepository
-	orderItemsDB    repository.PostgresOrderItemsRepository
+	store           OrderStore
 	warehouseClient pb.WarehouseClient
-	eventWriter     *kafka.Writer
+	eventWriter     EventWriter
 }
 
 func NewOrderService(
-	ordersDB repository.PostgresOrderRepository,
-	orderItemsDB repository.PostgresOrderItemsRepository,
+	store OrderStore,
 	wc pb.WarehouseClient,
-	eventWriter *kafka.Writer,
+	eventWriter EventWriter,
 ) *OrderService {
-	return &OrderService{ordersDB: ordersDB, orderItemsDB: orderItemsDB, warehouseClient: wc, eventWriter: eventWriter}
+	return &OrderService{store: store, warehouseClient: wc, eventWriter: eventWriter}
 }
 
 func (s *OrderService) CreateOrder(ctx context.Context, items []model.CreateOrderItemRequest) (*model.Order, error) {
@@ -37,9 +44,9 @@ func (s *OrderService) CreateOrder(ctx context.Context, items []model.CreateOrde
 	}
 
 	orderToSave := model.CreateOrderRequest{UserID: userID, Status: model.StatusPending}
-	order, err := s.ordersDB.CreateOrder(ctx, orderToSave)
+	order, err := s.store.CreateOrderWithItems(ctx, orderToSave, items)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create order with items: %w", err)
 	}
 
 	grpcItems := make([]*pb.OrderItem, len(items))
@@ -60,45 +67,35 @@ func (s *OrderService) CreateOrder(ctx context.Context, items []model.CreateOrde
 
 	if err != nil || !grpcResponse.GetSuccess() {
 		order.Status = model.StatusFailed
-		_ = s.ordersDB.ChangeOrderStatus(ctx, order.ID, model.StatusFailed)
+		if statusErr := s.store.ChangeOrderStatus(ctx, order.ID, model.StatusFailed); statusErr != nil {
+			return order, fmt.Errorf("reserve stock failed and update order status failed: %w", statusErr)
+		}
 		return order, errors.New("failed to reserve stock in warehouse")
 	}
 
-	for _, item := range items {
-		_, err = s.orderItemsDB.CreateOrderItem(ctx, model.SaveOrderItemRequest{
-			OrderID:  order.ID,
-			SKU:      item.SKU,
-			Quantity: item.Quantity,
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	order.Status = model.StatusPlaced
-	if err := s.ordersDB.ChangeOrderStatus(ctx, order.ID, model.StatusPlaced); err != nil {
-		return nil, err
+	if err := s.store.ChangeOrderStatus(ctx, order.ID, model.StatusPlaced); err != nil {
+		return nil, fmt.Errorf("update order status to placed: %w", err)
 	}
 
-	// TODO: Kafka message sending
 	event := kafka_events.KafkaOrderEvent{
 		OrderID:   order.ID,
 		UserID:    order.UserID,
-		Status:    "pending",
+		Status:    string(model.StatusPlaced),
 		Timestamp: time.Now(),
 	}
 
 	eventBytes, err := json.Marshal(event)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshal order event: %w", err)
 	}
 
 	err = s.eventWriter.WriteMessages(ctx, kafka.Message{
-		Key:   nil,
+		Key:   []byte(order.ID),
 		Value: eventBytes,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("write order event: %w", err)
 	}
 
 	return order, nil

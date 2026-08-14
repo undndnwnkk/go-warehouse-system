@@ -45,13 +45,13 @@ func main() {
 	pool, err := pgxpool.New(ctx, cfg.DBURL)
 	if err != nil {
 		log.Error("failed to create pgxpool", "error", err)
-		os.Exit(1)
+		return
 	}
 	defer pool.Close()
 
 	if err := pool.Ping(ctx); err != nil {
 		log.Error("no connection with PostgreSQL", "error", err)
-		os.Exit(1)
+		return
 	}
 	log.Info("Connection pool pgx created")
 
@@ -70,9 +70,8 @@ func main() {
 	defer writer.Close()
 
 	warehouseClient := pb.NewWarehouseClient(conn)
-	orderDB := repository.NewPostgresOrderRepository(pool)
-	orderItemsDB := repository.NewPostgresOrderItemsRepository(pool)
-	orderService := service.NewOrderService(*orderDB, *orderItemsDB, warehouseClient, writer)
+	orderStore := repository.NewPostgresOrderStore(pool)
+	orderService := service.NewOrderService(orderStore, warehouseClient, writer)
 	orderHandler := handler.NewRouter(*orderService)
 
 	server := http.Server{

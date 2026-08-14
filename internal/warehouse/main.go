@@ -38,13 +38,13 @@ func main() {
 	pool, err := pgxpool.New(ctx, cfg.DBURL)
 	if err != nil {
 		log.Error("failed to create pgxpool", "error", err)
-		os.Exit(1)
+		return
 	}
 	defer pool.Close()
 
 	if err := pool.Ping(ctx); err != nil {
 		log.Error("no connection with PostgreSQL", "error", err)
-		os.Exit(1)
+		return
 	}
 	log.Info("Connection pool pgx created")
 
@@ -55,7 +55,7 @@ func main() {
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
 		log.Error("failed to listen", "error", err)
-		os.Exit(1)
+		return
 	}
 
 	grpcServer := grpc.NewServer()

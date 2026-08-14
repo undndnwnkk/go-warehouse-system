@@ -34,33 +34,23 @@ func main() {
 
 	log.Info("Consumer started work...")
 
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	var wg sync.WaitGroup
 	wg.Add(1)
 
 	go startConsumer(ctx, &wg, reader, log)
 
-	for {
-		msg, err := reader.ReadMessage(ctx)
-		if err != nil {
-			log.Info("Error while reading message: " + err.Error())
-			break
-		}
-
-		log.Info("got: " + string(msg.Value))
-	}
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-
 	go func() {
-		log.Info("HTTP-server started", "port", "8082")
+		log.Info("HTTP-server started", "port", "8083")
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("Server error", "error", err)
+			stop()
 		}
 	}()
 
-	<-quit
+	<-ctx.Done()
 	log.Info("Ending work...")
 
 	if err := reader.Close(); err != nil {

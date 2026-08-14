@@ -40,6 +40,19 @@ func NewRouter(authService service.AuthService) http.Handler {
 	return r
 }
 
+// createUserHandler godoc
+//
+//	@Summary		Register a user
+//	@Description	Creates a new user and returns an access token and refresh token.
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		model.CreateUserRequest	true	"Registration payload"
+//	@Success		201		{object}	model.TokenPair
+//	@Failure		400		{object}	http_helper.ErrorResponse
+//	@Failure		409		{object}	http_helper.ErrorResponse
+//	@Failure		500		{object}	http_helper.ErrorResponse
+//	@Router			/api/v1/auth/register [post]
 func (h *Handler) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	var request model.CreateUserRequest
 
@@ -57,6 +70,19 @@ func (h *Handler) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	http_helper.WriteJSON(w, http.StatusCreated, tokens)
 }
 
+// loginUserHandler godoc
+//
+//	@Summary		Log in
+//	@Description	Authenticates a user and returns an access token and refresh token.
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		model.CreateUserRequest	true	"Login payload"
+//	@Success		200		{object}	model.TokenPair
+//	@Failure		400		{object}	http_helper.ErrorResponse
+//	@Failure		401		{object}	http_helper.ErrorResponse
+//	@Failure		500		{object}	http_helper.ErrorResponse
+//	@Router			/api/v1/auth/login [post]
 func (h *Handler) loginUserHandler(w http.ResponseWriter, r *http.Request) {
 	var request model.CreateUserRequest
 
@@ -75,6 +101,19 @@ func (h *Handler) loginUserHandler(w http.ResponseWriter, r *http.Request) {
 	http_helper.WriteJSON(w, http.StatusOK, tokens)
 }
 
+// refreshTokenHandler godoc
+//
+//	@Summary		Refresh tokens
+//	@Description	Revokes the current refresh token and returns a new token pair.
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		model.RefreshTokenRequest	true	"Refresh token payload"
+//	@Success		200		{object}	model.TokenPair
+//	@Failure		400		{object}	http_helper.ErrorResponse
+//	@Failure		401		{object}	http_helper.ErrorResponse
+//	@Failure		500		{object}	http_helper.ErrorResponse
+//	@Router			/api/v1/auth/refresh [post]
 func (h *Handler) refreshTokenHandler(w http.ResponseWriter, r *http.Request) {
 	var request model.RefreshTokenRequest
 
