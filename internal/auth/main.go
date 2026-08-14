@@ -29,6 +29,7 @@ func main() {
 		DBPassword: getEnv("DATABASE_PASSWORD", "password"),
 		DBName:     getEnv("DATABASE_NAME", "warehouse_db"),
 		DBURL:      getEnv("DATABASE_URL", "postgres://user:password@localhost:5433/warehouse_db?sslmode=disable"),
+		JWTSecret:  getEnv("JWT_SECRET", "supersecret"),
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -49,7 +50,7 @@ func main() {
 
 	userRepository := repository.NewPostgresUserRepository(pool)
 	tokenRepository := repository.NewPostgresRefreshTokenRepository(pool)
-	jwtManager := jwt.NewManager("supersecret")
+	jwtManager := jwt.NewManager(cfg.JWTSecret)
 	authService := service.NewAuthService(*userRepository, *tokenRepository, jwtManager, 15*time.Minute, 14*time.Hour)
 
 	router := handler.NewRouter(*authService)

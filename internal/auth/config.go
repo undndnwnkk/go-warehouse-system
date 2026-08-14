@@ -9,6 +9,7 @@ type Config struct {
 	DBPassword string
 	DBURL      string
 	DBName     string
+	JWTSecret  string
 }
 
 func getEnv(key, defaultValue string) string {

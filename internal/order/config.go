@@ -5,10 +5,13 @@ import (
 )
 
 type Config struct {
-	DBUser     string
-	DBPassword string
-	DBURL      string
-	DBName     string
+	DBUser        string
+	DBPassword    string
+	DBURL         string
+	DBName        string
+	KafkaBrokers  string
+	WarehouseGRPC string
+	JWTSecret     string
 }
 
 func getEnv(key, defaultValue string) string {

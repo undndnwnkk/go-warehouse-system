@@ -52,3 +52,23 @@ run-swagger:
 .PHONY: test
 test:
 	go test ./...
+
+.PHONY: up
+up:
+	docker compose up -d --build
+
+.PHONY: down
+down:
+	docker compose down
+
+.PHONY: down-v
+down-v:
+	docker compose down -v
+
+.PHONY: logs
+logs:
+	docker compose logs -f
+
+.PHONY: ps
+ps:
+	docker compose ps

@@ -15,13 +15,20 @@ import (
 )
 
 const (
-	topic        = "order_events"
-	brokerAdress = "localhost:29092"
-	groupID      = "notification"
+	topic   = "order_events"
+	groupID = "notification"
 )
+
+func getEnv(key, defaultValue string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	}
+	return defaultValue
+}
 
 func main() {
 	log := logger.Init("notification")
+	brokerAdress := getEnv("KAFKA_BROKERS", "localhost:29092")
 	server := http.Server{Addr: ":8083"}
 
 	reader := kafka.NewReader(kafka.ReaderConfig{

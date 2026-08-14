@@ -18,10 +18,10 @@ type Handler struct {
 	orderService service.OrderService
 }
 
-func NewRouter(orderService service.OrderService) http.Handler {
+func NewRouter(orderService service.OrderService, jwtSecret string) http.Handler {
 	h := &Handler{orderService: orderService}
 
-	jwtManager := jwt.NewManager("supersecret")
+	jwtManager := jwt.NewManager(jwtSecret)
 
 	r := chi.NewRouter()
 	r.Use(chimiddleware.RequestID)

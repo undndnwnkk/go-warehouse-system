@@ -21,10 +21,7 @@ import (
 	"time"
 )
 
-const (
-	topic        = "order_events"
-	brokerAdress = "localhost:29092"
-)
+const topic = "order_events"
 
 func main() {
 	log := logger.Init("order")
@@ -33,10 +30,13 @@ func main() {
 	}
 
 	cfg := Config{
-		DBUser:     getEnv("DATABASE_USER", "user"),
-		DBPassword: getEnv("DATABASE_PASSWORD", "password"),
-		DBName:     getEnv("DATABASE_NAME", "warehouse_db"),
-		DBURL:      getEnv("DATABASE_URL", "postgres://user:password@localhost:5433/warehouse_db?sslmode=disable"),
+		DBUser:        getEnv("DATABASE_USER", "user"),
+		DBPassword:    getEnv("DATABASE_PASSWORD", "password"),
+		DBName:        getEnv("DATABASE_NAME", "warehouse_db"),
+		DBURL:         getEnv("DATABASE_URL", "postgres://user:password@localhost:5433/warehouse_db?sslmode=disable"),
+		KafkaBrokers:  getEnv("KAFKA_BROKERS", "localhost:29092"),
+		WarehouseGRPC: getEnv("WAREHOUSE_GRPC_ADDR", "localhost:50051"),
+		JWTSecret:     getEnv("JWT_SECRET", "supersecret"),
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -55,14 +55,14 @@ func main() {
 	}
 	log.Info("Connection pool pgx created")
 
-	conn, err := grpc.NewClient("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(cfg.WarehouseGRPC, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Error("failed to connect to warehouse gRPC", "error", err)
 	}
 	defer conn.Close()
 
 	writer := &kafka.Writer{
-		Addr:                   kafka.TCP(brokerAdress),
+		Addr:                   kafka.TCP(cfg.KafkaBrokers),
 		Topic:                  topic,
 		Balancer:               &kafka.LeastBytes{},
 		AllowAutoTopicCreation: true,
@@ -72,7 +72,7 @@ func main() {
 	warehouseClient := pb.NewWarehouseClient(conn)
 	orderStore := repository.NewPostgresOrderStore(pool)
 	orderService := service.NewOrderService(orderStore, warehouseClient, writer)
-	orderHandler := handler.NewRouter(*orderService)
+	orderHandler := handler.NewRouter(*orderService, cfg.JWTSecret)
 
 	server := http.Server{
 		Addr:         ":8082",
