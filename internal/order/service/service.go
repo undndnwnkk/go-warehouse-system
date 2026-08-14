@@ -14,19 +14,20 @@ import (
 	kafka_events "github.com/undndnwnkk/go-warehouse-system/pkg/kafka"
 )
 
-const (
-	topic        = "order_events"
-	brokerAdress = "localhost:29092"
-)
-
 type OrderService struct {
 	ordersDB        repository.PostgresOrderRepository
 	orderItemsDB    repository.PostgresOrderItemsRepository
 	warehouseClient pb.WarehouseClient
+	eventWriter     *kafka.Writer
 }
 
-func NewOrderService(ordersDB repository.PostgresOrderRepository, orderItemsDB repository.PostgresOrderItemsRepository, wc pb.WarehouseClient) *OrderService {
-	return &OrderService{ordersDB: ordersDB, orderItemsDB: orderItemsDB, warehouseClient: wc}
+func NewOrderService(
+	ordersDB repository.PostgresOrderRepository,
+	orderItemsDB repository.PostgresOrderItemsRepository,
+	wc pb.WarehouseClient,
+	eventWriter *kafka.Writer,
+) *OrderService {
+	return &OrderService{ordersDB: ordersDB, orderItemsDB: orderItemsDB, warehouseClient: wc, eventWriter: eventWriter}
 }
 
 func (s *OrderService) CreateOrder(ctx context.Context, items []model.CreateOrderItemRequest) (*model.Order, error) {
@@ -92,15 +93,7 @@ func (s *OrderService) CreateOrder(ctx context.Context, items []model.CreateOrde
 		return nil, err
 	}
 
-	writer := &kafka.Writer{
-		Addr:                   kafka.TCP(brokerAdress),
-		Topic:                  topic,
-		Balancer:               &kafka.LeastBytes{},
-		AllowAutoTopicCreation: true,
-	}
-	defer writer.Close()
-
-	err = writer.WriteMessages(ctx, kafka.Message{
+	err = s.eventWriter.WriteMessages(ctx, kafka.Message{
 		Key:   nil,
 		Value: eventBytes,
 	})

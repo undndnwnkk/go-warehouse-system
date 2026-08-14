@@ -18,9 +18,6 @@ import (
 )
 
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
-
 	if err := godotenv.Load(); err != nil {
 		slog.Warn(".env file not found")
 	}
@@ -66,22 +63,22 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		logger.Info("HTTP-server started", "port", "8081")
+		slog.Info("HTTP-server started", "port", "8081")
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Error("Server error", "error", err)
+			slog.Error("Server error", "error", err)
 		}
 	}()
 
 	<-quit
-	logger.Info("Ending work...")
+	slog.Info("Ending work...")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		logger.Error("Error while stopping", "error", err)
+		slog.Error("Error while stopping", "error", err)
 	}
 
-	logger.Info("Server stopped")
+	slog.Info("Server stopped")
 
 }

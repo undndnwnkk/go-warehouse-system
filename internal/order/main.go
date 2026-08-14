@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+	kafka "github.com/segmentio/kafka-go"
 	"github.com/undndnwnkk/go-warehouse-system/internal/order/handler"
 	"github.com/undndnwnkk/go-warehouse-system/internal/order/repository"
 	"github.com/undndnwnkk/go-warehouse-system/internal/order/service"
@@ -16,13 +17,16 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
 	"time"
 )
 
-func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
+const (
+	topic        = "order_events"
+	brokerAdress = "localhost:29092"
+)
 
+func main() {
 	if err := godotenv.Load(); err != nil {
 		slog.Warn(".env file not found")
 	}
@@ -56,10 +60,18 @@ func main() {
 	}
 	defer conn.Close()
 
+	writer := &kafka.Writer{
+		Addr:                   kafka.TCP(brokerAdress),
+		Topic:                  topic,
+		Balancer:               &kafka.LeastBytes{},
+		AllowAutoTopicCreation: true,
+	}
+	defer writer.Close()
+
 	warehouseClient := pb.NewWarehouseClient(conn)
 	orderDB := repository.NewPostgresOrderRepository(pool)
 	orderItemsDB := repository.NewPostgresOrderItemsRepository(pool)
-	orderService := service.NewOrderService(*orderDB, *orderItemsDB, warehouseClient)
+	orderService := service.NewOrderService(*orderDB, *orderItemsDB, warehouseClient, writer)
 	orderHandler := handler.NewRouter(*orderService)
 
 	server := http.Server{
@@ -74,21 +86,21 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		logger.Info("HTTP-server started", "port", "8082")
+		slog.Info("HTTP-server started", "port", "8082")
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Error("Server error", "error", err)
+			slog.Error("Server error", "error", err)
 		}
 	}()
 
 	<-quit
-	logger.Info("Ending work...")
+	slog.Info("Ending work...")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		logger.Error("Error while stopping", "error", err)
+		slog.Error("Error while stopping", "error", err)
 	}
 
-	logger.Info("Server stopped")
+	slog.Info("Server stopped")
 }

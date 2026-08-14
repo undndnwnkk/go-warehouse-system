@@ -20,8 +20,6 @@ import (
 )
 
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
 
 	if err := godotenv.Load(); err != nil {
 		slog.Warn(".env file not found")
