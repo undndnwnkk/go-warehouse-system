@@ -24,3 +24,31 @@ migrate-create:
 .PHONY: migrate-up	
 migrate-up:
 	migrate -path migrations/ -database "postgres://user:password@localhost:5433/warehouse_db?sslmode=disable" -verbose up
+
+.PHONY: run-auth
+run-auth:
+	go build -o auth.exe ./internal/auth
+	./auth.exe
+
+.PHONY: run-order
+run-order:
+	go build -o order.exe ./internal/order
+	./order.exe
+
+.PHONY: run-warehouse
+run-warehouse:
+	go build -o warehouse.exe ./internal/warehouse
+	./warehouse.exe
+
+.PHONY: run-notification
+run-notification:
+	go build -o notification.exe ./internal/notification
+	./notification.exe
+
+.PHONY: run-swagger
+run-swagger:
+	go run api/openapi/main.go
+
+.PHONY: test
+test:
+	go test ./...

@@ -10,9 +10,9 @@ import (
 	"github.com/undndnwnkk/go-warehouse-system/internal/order/repository"
 	"github.com/undndnwnkk/go-warehouse-system/internal/order/service"
 	pb "github.com/undndnwnkk/go-warehouse-system/internal/warehouse/pb"
+	"github.com/undndnwnkk/go-warehouse-system/pkg/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -27,8 +27,9 @@ const (
 )
 
 func main() {
+	log := logger.Init("order")
 	if err := godotenv.Load(); err != nil {
-		slog.Warn(".env file not found")
+		log.Warn(".env file not found")
 	}
 
 	cfg := Config{
@@ -43,20 +44,20 @@ func main() {
 
 	pool, err := pgxpool.New(ctx, cfg.DBURL)
 	if err != nil {
-		slog.Error("failed to create pgxpool", "error", err)
+		log.Error("failed to create pgxpool", "error", err)
 		os.Exit(1)
 	}
 	defer pool.Close()
 
 	if err := pool.Ping(ctx); err != nil {
-		slog.Error("no connection with PostgreSQL", "error", err)
+		log.Error("no connection with PostgreSQL", "error", err)
 		os.Exit(1)
 	}
-	slog.Info("Connection pool pgx created")
+	log.Info("Connection pool pgx created")
 
 	conn, err := grpc.NewClient("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		slog.Error("failed to connect to warehouse gRPC", "error", err)
+		log.Error("failed to connect to warehouse gRPC", "error", err)
 	}
 	defer conn.Close()
 
@@ -86,21 +87,21 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		slog.Info("HTTP-server started", "port", "8082")
+		log.Info("HTTP-server started", "port", "8082")
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("Server error", "error", err)
+			log.Error("Server error", "error", err)
 		}
 	}()
 
 	<-quit
-	slog.Info("Ending work...")
+	log.Info("Ending work...")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		slog.Error("Error while stopping", "error", err)
+		log.Error("Error while stopping", "error", err)
 	}
 
-	slog.Info("Server stopped")
+	log.Info("Server stopped")
 }

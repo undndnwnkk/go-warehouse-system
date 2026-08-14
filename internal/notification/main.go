@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/segmentio/kafka-go"
+	"github.com/undndnwnkk/go-warehouse-system/pkg/logger"
 	"log/slog"
 	"net/http"
 	"os"
@@ -20,6 +21,7 @@ const (
 )
 
 func main() {
+	log := logger.Init("notification")
 	server := http.Server{Addr: ":8083"}
 
 	reader := kafka.NewReader(kafka.ReaderConfig{
@@ -30,73 +32,73 @@ func main() {
 		MaxBytes: 10e6,
 	})
 
-	slog.Info("Consumer started work...")
+	log.Info("Consumer started work...")
 
 	ctx := context.Background()
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	go startConsumer(ctx, &wg, reader)
+	go startConsumer(ctx, &wg, reader, log)
 
 	for {
 		msg, err := reader.ReadMessage(ctx)
 		if err != nil {
-			slog.Info("Error while reading message: " + err.Error())
+			log.Info("Error while reading message: " + err.Error())
 			break
 		}
 
-		slog.Info("got: " + string(msg.Value))
+		log.Info("got: " + string(msg.Value))
 	}
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		slog.Info("HTTP-server started", "port", "8082")
+		log.Info("HTTP-server started", "port", "8082")
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("Server error", "error", err)
+			log.Error("Server error", "error", err)
 		}
 	}()
 
 	<-quit
-	slog.Info("Ending work...")
+	log.Info("Ending work...")
 
 	if err := reader.Close(); err != nil {
-		slog.Error("error closing kafka reader", "error", err)
+		log.Error("error closing kafka reader", "error", err)
 	}
 	wg.Wait()
-	slog.Info("Consumer has stopped")
+	log.Info("Consumer has stopped")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		slog.Error("Error while stopping", "error", err)
+		log.Error("Error while stopping", "error", err)
 	}
 
-	slog.Info("Server stopped")
+	log.Info("Server stopped")
 }
 
-func startConsumer(ctx context.Context, wg *sync.WaitGroup, reader *kafka.Reader) {
+func startConsumer(ctx context.Context, wg *sync.WaitGroup, reader *kafka.Reader, log *slog.Logger) {
 	defer wg.Done()
 
 	for {
 		msg, err := reader.ReadMessage(ctx)
 		if err != nil {
 			if errors.Is(err, context.Canceled) || errors.Is(err, kafka.ErrGroupClosed) {
-				slog.Info("[Consumer] Ending read loop...")
+				log.Info("[Consumer] Ending read loop...")
 				return
 			}
-			slog.Error("[Consumer] Error while reading", "error", err)
+			log.Error("[Consumer] Error while reading", "error", err)
 
 			time.Sleep(1 * time.Second)
 			continue
 		}
 
-		processMessage(msg)
+		processMessage(msg, log)
 	}
 }
 
-func processMessage(msg kafka.Message) {
-	slog.Info("[Consumer] Message delivered", "Offset", msg.Offset, "Key", string(msg.Key), "Value", string(msg.Value))
+func processMessage(msg kafka.Message, log *slog.Logger) {
+	log.Info("[Consumer] Message delivered", "Offset", msg.Offset, "Key", string(msg.Key), "Value", string(msg.Value))
 }

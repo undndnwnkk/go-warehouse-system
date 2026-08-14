@@ -7,6 +7,8 @@ import (
 	"github.com/undndnwnkk/go-warehouse-system/internal/auth/model"
 	"github.com/undndnwnkk/go-warehouse-system/internal/auth/service"
 	http_helper "github.com/undndnwnkk/go-warehouse-system/pkg/http"
+	"github.com/undndnwnkk/go-warehouse-system/pkg/logger"
+	"log/slog"
 	"net/http"
 )
 
@@ -18,9 +20,9 @@ func NewRouter(authService service.AuthService) http.Handler {
 	h := &Handler{authService: authService}
 
 	r := chi.NewRouter()
-	r.Use(chimiddleware.Logger)
-	r.Use(chimiddleware.Recoverer)
 	r.Use(chimiddleware.RequestID)
+	r.Use(logger.RequestLogger(slog.Default()))
+	r.Use(chimiddleware.Recoverer)
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		http_helper.WriteError(w, http.StatusNotFound, "not found")

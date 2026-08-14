@@ -9,6 +9,8 @@ import (
 	"github.com/undndnwnkk/go-warehouse-system/internal/order/service"
 	http_helper "github.com/undndnwnkk/go-warehouse-system/pkg/http"
 	"github.com/undndnwnkk/go-warehouse-system/pkg/jwt"
+	"github.com/undndnwnkk/go-warehouse-system/pkg/logger"
+	"log/slog"
 	"net/http"
 )
 
@@ -22,9 +24,9 @@ func NewRouter(orderService service.OrderService) http.Handler {
 	jwtManager := jwt.NewManager("supersecret")
 
 	r := chi.NewRouter()
-	r.Use(chimiddleware.Logger)
-	r.Use(chimiddleware.Recoverer)
 	r.Use(chimiddleware.RequestID)
+	r.Use(logger.RequestLogger(slog.Default()))
+	r.Use(chimiddleware.Recoverer)
 
 	r.Route("/api/v1/orders", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
